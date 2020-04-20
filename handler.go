@@ -77,6 +77,7 @@ func (h *handler) handleVisit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
 
 	canvas := svg.New(w)
 	canvas.Start(70, 20)
