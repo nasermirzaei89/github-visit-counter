@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	db, err := bolt.Open(env("DB_PATH", "db.bolt"), 0666, nil)
+	db, err := bolt.Open("db.bolt", 0666, nil)
 	if err != nil {
 		panic(errors.Wrap(err, "error on open db"))
 	}
@@ -25,17 +25,8 @@ func main() {
 		panic(errors.Wrap(err, "error on update transaction"))
 	}
 
-	err = http.ListenAndServe(env("API_ADDRESS", ":80"), NewHandler(db))
+	err = http.ListenAndServe(":"+os.Getenv("PORT"), NewHandler(db))
 	if err != nil {
 		panic(errors.Wrap(err, "error on listen and serve"))
 	}
-}
-
-func env(key, def string) string {
-	res, ok := os.LookupEnv(key)
-	if ok {
-		return res
-	}
-
-	return def
 }
