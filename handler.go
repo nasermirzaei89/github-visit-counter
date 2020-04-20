@@ -27,6 +27,8 @@ func NewHandler(db *bolt.DB) http.Handler {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("%s %s FROM %s", r.Method, r.URL.Path, r.Referer())
+
 	switch r.Method {
 	case http.MethodOptions:
 		w.WriteHeader(http.StatusOK)
