@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/md5"
 	"fmt"
 	"github.com/ajstarks/svgo"
 	"github.com/pkg/errors"
@@ -76,10 +78,9 @@ func (h *handler) handleVisit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+	b := bytes.Buffer{}
 
-	canvas := svg.New(w)
+	canvas := svg.New(&b)
 	canvas.Start(70, 20)
 	canvas.Rect(0, 0, 40, 20, `fill="#555"`)
 	canvas.Rect(40, 0, 30, 20, `fill="#08C"`)
@@ -88,6 +89,13 @@ func (h *handler) handleVisit(w http.ResponseWriter, r *http.Request) {
 	canvas.Text(56, 15, number(count), `fill="#000"`, `font-family="Verdana,DejaVu Sans,sans-serif"`, `font-size="12"`, `text-anchor="middle"`, `opacity="0.1"`)
 	canvas.Text(55, 14, number(count), `fill="#fff"`, `font-family="Verdana,DejaVu Sans,sans-serif"`, `font-size="12"`, `text-anchor="middle"`)
 	canvas.End()
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+	sum := md5.Sum(b.Bytes())
+	w.Header().Set("ETag", string(sum[:]))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(b.Bytes())
 }
 
 func number(i int64) string {
