@@ -92,8 +92,7 @@ func (h *handler) handleVisit(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
-	sum := md5.Sum(b.Bytes())
-	w.Header().Set("ETag", string(sum[:]))
+	w.Header().Set("ETag", fmt.Sprintf("%x", md5.Sum(b.Bytes())))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(b.Bytes())
 }
