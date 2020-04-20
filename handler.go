@@ -61,7 +61,10 @@ func (h *handler) handleVisit(w http.ResponseWriter, r *http.Request) {
 
 		count, _ = strconv.ParseInt(string(bcount), 10, 64)
 
-		if !strings.HasPrefix(r.Referer(), fmt.Sprintf("https://github.com/%s", key)) {
+		// prevent increase count when someone visits image directly or in another site
+		// we can't check referer at this time because of camo policies
+		if !strings.HasPrefix(r.Referer(), fmt.Sprintf("https://github.com/%s", key)) &&
+			!strings.Contains(r.UserAgent(), "github-camo") {
 			return nil
 		}
 
