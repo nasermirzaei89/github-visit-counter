@@ -45,11 +45,24 @@ func (repo *repository) Get(ctx context.Context, key string) (int64, error) {
 }
 
 func (repo *repository) Visit(ctx context.Context, key string) (int64, error) {
-	_, err := repo.db.
-		ExecContext(ctx, `UPDATE visits SET "count" = "count" + 1 WHERE "key" = $1;`, key)
+	res, err := repo.Get(ctx, key)
 	if err != nil {
-		return 0, errors.Wrap(err, "error on exec update")
+		return 0, err
 	}
 
-	return repo.Get(ctx, key)
+	if res == 0 {
+		_, err := repo.db.
+			ExecContext(ctx, `INSERT INTO visits ("key", "count") SELECT $1, 1 WHERE NOT EXISTS (SELECT * FROM visits WHERE "key" = $1);`, key)
+		if err != nil {
+			return 0, errors.Wrap(err, "error on exec update")
+		}
+	} else {
+		_, err := repo.db.
+			ExecContext(ctx, `UPDATE visits SET "count" = "count" + 1 WHERE "key" = $1;`, key)
+		if err != nil {
+			return 0, errors.Wrap(err, "error on exec update")
+		}
+	}
+
+	return res + 1, nil
 }
