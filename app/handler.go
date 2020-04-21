@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/ajstarks/svgo"
 	"github.com/pkg/errors"
-	bolt "go.etcd.io/bbolt"
 	"log"
 	"net/http"
 	"regexp"
@@ -16,12 +15,12 @@ import (
 
 type handler struct {
 	pattern *regexp.Regexp
-	db      *bolt.DB
+	repo    Repository
 }
 
-func NewHandler(db *bolt.DB) http.Handler {
+func NewHandler(repo Repository) http.Handler {
 	return &handler{
-		db:      db,
+		repo:    repo,
 		pattern: regexp.MustCompile("^/[A-Za-z0-9-_]+/[A-Za-z0-9-_]+/visits.svg$"),
 	}
 }
@@ -49,38 +48,30 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) handleVisit(w http.ResponseWriter, r *http.Request) {
-	var count int64
 	key := strings.TrimSuffix(r.URL.Path[1:], "/visits.svg")
 
-	err := h.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("visits"))
-		bcount := b.Get([]byte(key))
-		if bcount == nil {
-			bcount = []byte("0")
-		}
+	var (
+		count int64
+		err   error
+	)
 
-		count, _ = strconv.ParseInt(string(bcount), 10, 64)
-
-		// prevent increase count when someone visits image directly or in another site
-		// we can't check referer at this time because of camo policies
-		if !strings.HasPrefix(r.Referer(), fmt.Sprintf("https://github.com/%s", key)) &&
-			!strings.Contains(r.UserAgent(), "github-camo") {
-			return nil
-		}
-
-		count++
-
-		err := b.Put([]byte(key), []byte(strconv.FormatInt(count, 10)))
+	// prevent increase count when someone visits image directly or in another site
+	// we can't check referer at this time because of camo policies
+	if !strings.HasPrefix(r.Referer(), fmt.Sprintf("https://github.com/%s", key)) &&
+		!strings.Contains(r.UserAgent(), "github-camo") {
+		count, err = h.repo.Get(r.Context(), key)
 		if err != nil {
-			return errors.Wrap(err, "error on put in transaction")
+			log.Printf("%+v", errors.Wrap(err, "error on get key"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-
-		return nil
-	})
-	if err != nil {
-		log.Printf("%+v", errors.Wrap(err, "error on update transaction"))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	} else {
+		count, err = h.repo.Visit(r.Context(), key)
+		if err != nil {
+			log.Printf("%+v", errors.Wrap(err, "error on visit key"))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	b := bytes.Buffer{}
