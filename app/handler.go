@@ -26,7 +26,7 @@ func NewHandler(repo Repository) http.Handler {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s %+v", r.Method, r.URL.Path, r.Header)
+	//log.Printf("%s %s %+v", r.Method, r.URL.Path, r.Header)
 
 	switch r.Method {
 	case http.MethodOptions:
